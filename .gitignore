@@ -1,0 +1,5 @@
+.env
+known_faces
+known_faces_proccessed
+modules/__pycache__
+captured_face.jpg
