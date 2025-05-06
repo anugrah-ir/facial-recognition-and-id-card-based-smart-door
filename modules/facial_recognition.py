@@ -2,48 +2,41 @@ import cv2
 import face_recognition
 import os
 
-def detect_face(camera, unknown_face_path):
-    while True:
-        captured, photo = camera.read()
-        if not captured:
-            print('Failed to capture photo.')
-            break
+face_recognition_tolerance = float(os.getenv('FACE_RECOGNITION_TOLERANCE'))
 
-        cv2.imshow('Face Detection', photo)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+def detect_face(proccessed_image, original_image):
+    proccessed_image = cv2.cvtColor(proccessed_image, cv2.COLOR_BGR2RGB)
+    faces = face_recognition.face_locations(proccessed_image)
+    if len(faces) == 0:
+        cv2.putText(original_image, 'No face detected', (10, 600), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
+        return None, original_image
+    
+    if len(faces) > 1:
+        cv2.putText(original_image, 'More than one face detected', (10, 600), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 255), 3)
+        return None, original_image
+    
+    cv2.putText(original_image, 'Face detected', (10, 600), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
+    
+    for (top, right, bottom, left) in faces:
+        cropped_image = proccessed_image[top:bottom, left:right]
+        cv2.rectangle(original_image, (left, top), (right, bottom), (0, 255, 0), 2)
 
-        rgb_photo = cv2.cvtColor(photo, cv2.COLOR_BGR2RGB)
-        faces = face_recognition.face_locations(rgb_photo)
-        if not faces:
-            print('No face detected.')
-            continue
+    resized_image = cv2.resize(cropped_image, (640, 640))
+    
+    return resized_image, original_image
 
-        for (top, right, bottom, left) in faces:
-            cropped_photo = photo[top:bottom, left:right]
-            
-        resized_photo = cv2.resize(cropped_photo, (1000, 1000))
-        normalized_photo = cv2.normalize(resized_photo, None, 0, 255, cv2.NORM_MINMAX)
-
-        normalized_face_rgb = cv2.cvtColor(normalized_photo, cv2.COLOR_BGR2RGB)
-        face = face_recognition.face_encodings(normalized_face_rgb)
+def extract_feature(face_image, original_image):
+    face_features = face_recognition.face_encodings(face_image)
         
-        if not face:
-            print('Face too blurry.')
-            continue
+    if len(face_features) == 0:
+        cv2.putText(original_image, 'Face too blurry', (10, 600), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 255), 3)
+        return None, original_image
+    
+    face_feature = face_features[0]
+    return face_feature, original_image
 
-        face = face[0]
-        cv2.imwrite(unknown_face_path, normalized_photo)
-        cv2.destroyAllWindows()
-        print('Face detected.')
-        return face
+def recognize_face(unknown_face, known_face):
 
-def recognize_face(unknown_face, known_face_dir, data, tolerance):
-    known_face_path = os.path.join(known_face_dir, data + '.jpg')
-    known_face_photo = face_recognition.load_image_file(known_face_path)
-    known_face = face_recognition.face_encodings(known_face_photo)
-    known_face = known_face[0]
+    match = face_recognition.compare_faces([known_face], unknown_face, tolerance=face_recognition_tolerance)
 
-    match = face_recognition.compare_faces([known_face], unknown_face, tolerance=tolerance)
-
-    return match, known_face_path
+    return match[0]

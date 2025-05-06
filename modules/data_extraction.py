@@ -1,7 +1,10 @@
-def get_key_value_pair(text):
-    if ":" in text:
-        key, value = text.split(":", 1)
-        key = key.strip()
-        value = value.strip()
-        if key and value:
-            return key, value
+import re
+
+def detect_and_extract_credential(text):
+    pattern = r'ID\s*:\s*(\d{11})'
+    match = re.search(pattern, text)
+
+    if match:
+        return match.group(1)
+    else:
+        return None
